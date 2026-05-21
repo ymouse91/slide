@@ -85,6 +85,9 @@ button.danger{background:var(--red);color:white}
 }
 #actions{display:flex;gap:8px;flex:0 1 auto;align-items:center;min-width:0}
 #actions button{flex:0 0 auto}
+button:disabled{
+  opacity:.45;filter:saturate(.5);cursor:default;
+}
 .scoreToggle{
   display:flex;align-items:center;gap:6px;
   color:var(--muted);font-size:12px;font-weight:800;
@@ -272,6 +275,7 @@ button.danger{background:var(--red);color:white}
     width:100%;justify-content:space-between;gap:5px;
   }
   #actions button{padding:6px 8px;font-size:13px}
+  #undoBtn{padding-left:7px;padding-right:7px}
   .scoreToggle{font-size:11px;gap:4px}
   .scoreToggle input{width:18px;height:18px}
   #table{
@@ -333,6 +337,7 @@ button.danger{background:var(--red);color:white}
   <div id="topbar">
     <div id="status">Valitse pelaajamäärä<small>Kortit kohdistetaan 6×6-solukkoon: nuolikehä + 4×4-kortit.</small></div>
     <div id="actions">
+      <button id="undoBtn" class="secondary" onclick="undoMove()" disabled>Peru</button>
       <label class="scoreToggle"><input id="showScoresToggle" type="checkbox"> Pisteet</label>
       <button class="secondary" onclick="openHelp()">Ohjeet</button>
       <button class="danger" onclick="resetGame()">Uusi</button>
@@ -382,12 +387,14 @@ let draftIndex = 0;
 let selectedTableIndex = null;
 let placedCards = 0;
 let showScoresDuringGame = false;
+let undoState = null;
 
 const boardsEl = document.getElementById('boards');
 const tableEl = document.getElementById('tableCards');
 const statusEl = document.getElementById('status');
 const setupEl = document.getElementById('setup');
 const scoreToggleEl = document.getElementById('showScoresToggle');
+const undoBtn = document.getElementById('undoBtn');
 
 function shuffle(a){
   for(let i=a.length-1;i>0;i--){
@@ -408,12 +415,48 @@ function msg(t){
   clearTimeout(msg.timer);
   msg.timer=setTimeout(()=>el.style.display='none',2100);
 }
+function cloneData(value){
+  return JSON.parse(JSON.stringify(value));
+}
+function snapshotState(){
+  return cloneData({
+    players, playerCount, deck, table, phase, round, firstPlayer,
+    selectOffset, draftIndex, selectedTableIndex, placedCards
+  });
+}
+function applyState(state){
+  players=state.players || [];
+  playerCount=state.playerCount || 0;
+  deck=Array.isArray(state.deck) ? state.deck : [];
+  table=Array.isArray(state.table) ? state.table : [];
+  phase=state.phase || 'setup';
+  round=state.round || 1;
+  firstPlayer=state.firstPlayer || 0;
+  selectOffset=state.selectOffset || 0;
+  draftIndex=state.draftIndex || 0;
+  selectedTableIndex=state.selectedTableIndex ?? null;
+  placedCards=state.placedCards || 0;
+  setupEl.style.display=phase==='setup' ? 'flex' : 'none';
+  boardsEl.className=playerCount ? 'p'+playerCount : '';
+}
+function pushUndo(){
+  undoState=snapshotState();
+}
+function undoMove(){
+  if(!undoState) return;
+  const previous=undoState;
+  undoState=null;
+  applyState(previous);
+  saveGame();
+  render();
+  msg('Siirto peruttu.');
+}
 function saveGame(){
   try{
     localStorage.setItem(SAVE_KEY, JSON.stringify({
       players, playerCount, deck, table, phase, round, firstPlayer,
       selectOffset, draftIndex, selectedTableIndex, placedCards,
-      showScoresDuringGame
+      showScoresDuringGame, undoState
     }));
   }catch(e){
     msg('Pelin tallennus ei onnistunut.');
@@ -438,6 +481,7 @@ function restoreGame(){
     selectedTableIndex=saved.selectedTableIndex ?? null;
     placedCards=saved.placedCards || 0;
     showScoresDuringGame=!!saved.showScoresDuringGame;
+    undoState=saved.undoState || null;
 
     setupEl.style.display=phase==='setup' ? 'flex' : 'none';
     boardsEl.className=playerCount ? 'p'+playerCount : '';
@@ -465,6 +509,8 @@ function resetGame(){
   draftIndex=0;
   selectedTableIndex=null;
   placedCards=0;
+  undoState=null;
+  undoState=null;
   setupEl.style.display='flex';
   boardsEl.className='';
   render();
@@ -543,6 +589,7 @@ function selectGridCard(pIdx, idx){
     return;
   }
 
+  pushUndo();
   table.push({value:cell.value, from:pIdx, revealed:false});
   players[pIdx].grid[idx] = {value:null, revealed:true, empty:true};
   players[pIdx].removedIndex = idx;
@@ -554,6 +601,7 @@ function selectGridCard(pIdx, idx){
     selectedTableIndex=null;
     draftIndex=0;
     phase='draft';
+    undoState=null;
   }
 
   saveGame();
@@ -563,6 +611,7 @@ function selectGridCard(pIdx, idx){
 function chooseTable(i){
   if(phase!=='draft') return;
   if(!table[i]) return;
+  pushUndo();
   selectedTableIndex = selectedTableIndex===i ? null : i;
   saveGame();
   render();
@@ -626,6 +675,7 @@ function slideIn(pIdx, dir){
   const picked=table[selectedTableIndex];
   if(!picked) return;
 
+  pushUndo();
   const g=players[pIdx].grid;
   const newCell={value:picked.value, revealed:true, empty:false};
 
@@ -797,6 +847,7 @@ function makeCard(cell, pIdx, idx, scoreInfo){
 function render(){
   autoSelectLastTableCard();
   setStatus();
+  undoBtn.disabled=!undoState;
   const winners = winnerIndices();
 
   tableEl.innerHTML='';
