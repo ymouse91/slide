@@ -285,12 +285,15 @@ button.danger{background:var(--red);color:white}
   .player{grid-template-rows:22px 1fr;padding:4px;gap:3px}
   .phead{font-size:12px}
   .phead span:last-child{font-size:11px}
-  #boards.p2,#boards.p3,#boards.p4{
+  #boards.p2,#boards.p3{
     grid-template-columns:1fr;
+  }
+  #boards.p4{
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:1fr 1fr;
   }
   #boards.p2{grid-template-rows:1fr 1fr}
   #boards.p3{grid-template-rows:1fr 1fr 1fr}
-  #boards.p4{grid-template-rows:1fr 1fr 1fr 1fr}
   #boards.p2 .frame6{
     --cell:min(
       calc((var(--boardW) - 18px) / 6),
@@ -305,8 +308,8 @@ button.danger{background:var(--red);color:white}
   }
   #boards.p4 .frame6{
     --cell:min(
-      calc((var(--boardW) - 18px) / 6),
-      calc((var(--boardH) - 100px) / 24)
+      calc((var(--boardW) - 28px) / 12),
+      calc((var(--boardH) - 54px) / 12)
     );
   }
 }
