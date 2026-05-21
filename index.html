@@ -3,6 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Slide">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Slide iPad</title>
 <style>
 :root{
@@ -430,7 +436,9 @@ function setStatus(){
       ? 'Valitse yksi näkyvä pöytäkortti. Viimeinen jäljellä oleva valitaan automaattisesti.'
       : 'Työnnä kortti vihreästä nuolesta rivin tai sarakkeen alusta/lopusta.';
   }else if(phase==='gameover'){
-    main='Peli päättyi';
+    const winners = winnerIndices();
+    const names = [...winners].map(i=>players[i].name);
+    main = names.length === 1 ? `${names[0]} voitti` : `Tasapeli: ${names.join(', ')}`;
     sub='Vierekkäiset samat numerot poistuvat pisteytyksestä.';
   }else{
     main='Valitse pelaajamäärä';
@@ -568,6 +576,9 @@ function slideIn(pIdx, dir){
     draftIndex=playerCount;
     selectOffset=0;
     phase='gameover';
+    const winners = winnerIndices();
+    const names = [...winners].map(i=>players[i].name);
+    msg(names.length === 1 ? `${names[0]} voitti pelin` : `Tasapeli: ${names.join(', ')}`);
     saveGame();
     render();
     return;
@@ -814,6 +825,11 @@ scoreToggleEl.addEventListener('change', ()=>{
   saveGame();
   render();
 });
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
 restoreGame();
 refreshViewportSize();
 
