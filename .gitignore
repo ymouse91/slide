@@ -1,0 +1,11 @@
+node_modules/
+start_https.bat
+# Local browser/test artifacts
+*-check.png
+playwright-report/
+test-results/
+.edge-profile/
+
+# Logs and temporary files
+*.log
+*.tmp

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0f172a">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Slide">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,6 +18,16 @@
   --text:#f8fafc; --muted:#cbd5e1;
   --accent:#f59e0b; --green:#22c55e; --red:#ef4444;
   --topH:52px; --tableH:84px; --gap:6px; --appH:100dvh;
+  --safeT:env(safe-area-inset-top, 0px);
+  --safeR:env(safe-area-inset-right, 0px);
+  --safeB:env(safe-area-inset-bottom, 0px);
+  --safeL:env(safe-area-inset-left, 0px);
+  --padT:calc(8px + var(--safeT));
+  --padR:calc(8px + var(--safeR));
+  --padB:calc(8px + var(--safeB));
+  --padL:calc(8px + var(--safeL));
+  --boardW:calc(100vw - var(--padL) - var(--padR));
+  --boardH:calc(var(--appH, 100dvh) - var(--padT) - var(--padB) - var(--topH) - var(--tableH) - var(--gap) - var(--gap));
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{
@@ -36,10 +47,13 @@ button.danger{background:var(--red);color:white}
   position:fixed;inset:0;z-index:30;
   display:flex;align-items:center;justify-content:center;
   background:linear-gradient(145deg,#0f172a,#1e293b);
-  padding:24px;
+  padding:calc(24px + var(--safeT)) calc(24px + var(--safeR)) calc(24px + var(--safeB)) calc(24px + var(--safeL));
+  overflow:hidden;
 }
 .setupBox{
-  width:min(560px,92vw);background:var(--panel);
+  width:100%;max-width:560px;background:var(--panel);
+  max-height:calc(var(--appH, 100dvh) - var(--safeT) - var(--safeB) - 32px);
+  overflow:auto;
   border:1px solid var(--line);border-radius:20px;
   padding:24px;text-align:center;box-shadow:0 20px 70px #0009;
 }
@@ -51,7 +65,7 @@ button.danger{background:var(--red);color:white}
 #app{
   width:100vw;height:var(--appH, 100dvh);
   display:grid;grid-template-rows:var(--topH) var(--tableH) 1fr;
-  gap:var(--gap);padding:8px;overflow:hidden;
+  gap:var(--gap);padding:var(--padT) var(--padR) var(--padB) var(--padL);overflow:hidden;
 }
 #topbar,#table{
   background:var(--panel);border:1px solid var(--line);
@@ -69,24 +83,31 @@ button.danger{background:var(--red);color:white}
   display:block;color:var(--muted);font-size:12px;font-weight:600;
   overflow:hidden;text-overflow:ellipsis;
 }
-#actions{display:flex;gap:8px;flex-shrink:0;align-items:center}
+#actions{display:flex;gap:8px;flex:0 1 auto;align-items:center;min-width:0}
+#actions button{flex:0 0 auto}
 .scoreToggle{
   display:flex;align-items:center;gap:6px;
   color:var(--muted);font-size:12px;font-weight:800;
   white-space:nowrap;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;
 }
 .scoreToggle input{
   width:20px;height:20px;margin:0;accent-color:var(--accent);
 }
 
 #table{
-  display:grid;grid-template-columns:150px 1fr;gap:6px;padding:7px;
+  display:grid;grid-template-columns:82px minmax(0,1fr);gap:6px;padding:7px;
 }
-#table h2{margin:0 0 4px;font-size:15px}
-#tableInfo{font-size:12px;color:var(--muted);line-height:1.2}
-#tableCards{display:flex;gap:8px;align-items:center;min-width:0;overflow:hidden}
-.tableSlot{width:48px;height:68px;flex:0 0 auto}
-.tableSlot .card{font-size:26px}
+#table h2{margin:0;font-size:15px;line-height:1.1}
+#tableCards{
+  display:grid;grid-template-columns:repeat(4,minmax(0,48px));
+  justify-content:start;gap:6px;align-items:center;min-width:0;overflow:hidden;
+}
+.tableSlot{
+  width:100%;height:min(68px, calc(var(--tableH) - 16px));
+  min-width:0;max-width:48px;
+}
+.tableSlot .card{font-size:24px}
 
 #boards{min-height:0;display:grid;gap:6px;overflow:hidden}
 #boards.p2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
@@ -127,20 +148,20 @@ button.danger{background:var(--red);color:white}
 }
 #boards.p2 .frame6{
   --cell:min(
-    calc((100vw - 44px) / 12),
-    calc((var(--appH, 100dvh) - var(--topH) - var(--tableH) - 52px) / 6)
+    calc((var(--boardW) - 28px) / 12),
+    calc((var(--boardH) - 34px) / 6)
   );
 }
 #boards.p3 .frame6{
   --cell:min(
-    calc((100vw - 58px) / 18),
-    calc((var(--appH, 100dvh) - var(--topH) - var(--tableH) - 52px) / 6)
+    calc((var(--boardW) - 42px) / 18),
+    calc((var(--boardH) - 34px) / 6)
   );
 }
 #boards.p4 .frame6{
   --cell:min(
-    calc((100vw - 50px) / 12),
-    calc((var(--appH, 100dvh) - var(--topH) - var(--tableH) - 72px) / 12)
+    calc((var(--boardW) - 34px) / 12),
+    calc((var(--boardH) - 54px) / 12)
   );
 }
 .cell{
@@ -198,19 +219,23 @@ button.danger{background:var(--red);color:white}
 .player.notWinner{opacity:.38;filter:saturate(.45)}
 
 #msg{
-  position:fixed;left:50%;bottom:12px;transform:translateX(-50%);
+  position:fixed;left:50%;bottom:calc(12px + var(--safeB));transform:translateX(-50%);
   z-index:40;display:none;background:#000c;color:white;
   border:1px solid #ffffff33;border-radius:999px;
+  max-width:calc(100vw - var(--safeL) - var(--safeR) - 24px);
   padding:8px 14px;font-weight:800;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 #helpDialog{
   position:fixed;inset:0;z-index:50;
   display:none;align-items:center;justify-content:center;
-  background:#020617b8;padding:18px;
+  background:#020617b8;
+  padding:calc(18px + var(--safeT)) calc(18px + var(--safeR)) calc(18px + var(--safeB)) calc(18px + var(--safeL));
 }
 #helpDialog.open{display:flex}
 .helpBox{
-  width:min(620px,94vw);max-height:min(720px,90dvh);
+  width:100%;max-width:620px;
+  max-height:calc(var(--appH, 100dvh) - var(--safeT) - var(--safeB) - 36px);
   overflow:auto;background:var(--panel);border:1px solid var(--line);
   border-radius:16px;padding:18px;box-shadow:0 22px 70px #000b;
 }
@@ -224,6 +249,66 @@ button.danger{background:var(--red);color:white}
 .helpBox strong{color:var(--text)}
 @media (orientation:portrait){
   #boards.p3{grid-template-columns:1fr;grid-template-rows:1fr 1fr 1fr}
+}
+@media (max-width:520px) and (orientation:portrait){
+  :root{
+    --topH:68px;
+    --tableH:76px;
+    --gap:5px;
+    --padT:calc(6px + var(--safeT));
+    --padR:calc(6px + var(--safeR));
+    --padB:calc(6px + var(--safeB));
+    --padL:calc(6px + var(--safeL));
+  }
+  button{border-radius:9px;padding:7px 9px}
+  #topbar{
+    display:grid;grid-template-columns:1fr;
+    grid-template-rows:minmax(0,1fr) 32px;
+    align-items:center;padding:5px 7px;gap:3px;
+  }
+  #status{font-size:14px;line-height:1.05}
+  #status small{font-size:11px}
+  #actions{
+    width:100%;justify-content:space-between;gap:5px;
+  }
+  #actions button{padding:6px 8px;font-size:13px}
+  .scoreToggle{font-size:11px;gap:4px}
+  .scoreToggle input{width:18px;height:18px}
+  #table{
+    grid-template-columns:68px minmax(0,1fr);
+    padding:5px;gap:5px;
+  }
+  #table h2{font-size:13px;align-self:center}
+  #tableCards{grid-template-columns:repeat(4,minmax(0,45px));gap:5px}
+  .tableSlot{height:60px;max-width:45px}
+  .tableSlot .card{font-size:24px}
+  .player{grid-template-rows:22px 1fr;padding:4px;gap:3px}
+  .phead{font-size:12px}
+  .phead span:last-child{font-size:11px}
+  #boards.p2,#boards.p3,#boards.p4{
+    grid-template-columns:1fr;
+  }
+  #boards.p2{grid-template-rows:1fr 1fr}
+  #boards.p3{grid-template-rows:1fr 1fr 1fr}
+  #boards.p4{grid-template-rows:1fr 1fr 1fr 1fr}
+  #boards.p2 .frame6{
+    --cell:min(
+      calc((var(--boardW) - 18px) / 6),
+      calc((var(--boardH) - 50px) / 12)
+    );
+  }
+  #boards.p3 .frame6{
+    --cell:min(
+      calc((var(--boardW) - 12px) / 6),
+      calc((var(--boardH) - 54px) / 18)
+    );
+  }
+  #boards.p4 .frame6{
+    --cell:min(
+      calc((var(--boardW) - 18px) / 6),
+      calc((var(--boardH) - 100px) / 24)
+    );
+  }
 }
 </style>
 </head>
@@ -254,7 +339,6 @@ button.danger{background:var(--red);color:white}
   <div id="table">
     <div>
       <h2>Pöytäkortit</h2>
-      <div id="tableInfo">Kortit paljastuvat automaattisesti, kun kaikki ovat valinneet.</div>
     </div>
     <div id="tableCards"></div>
   </div>
