@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Slide iPad</title>
+<style>
+:root{
+  --bg:#0f172a; --panel:#172033; --line:#3b4a68;
+  --card:#f8efd2; --back1:#334155; --back2:#475569;
+  --text:#f8fafc; --muted:#cbd5e1;
+  --accent:#f59e0b; --green:#22c55e; --red:#ef4444;
+  --topH:52px; --tableH:84px; --gap:6px; --appH:100dvh;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{
+  margin:0;width:100%;height:100%;overflow:hidden;
+  background:var(--bg);color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+  touch-action:manipulation;
+}
+button{
+  border:0;border-radius:10px;padding:8px 12px;
+  font:inherit;font-weight:800;background:var(--accent);color:#111827;
+}
+button.secondary{background:#475569;color:white}
+button.danger{background:var(--red);color:white}
+
+#setup{
+  position:fixed;inset:0;z-index:30;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(145deg,#0f172a,#1e293b);
+  padding:24px;
+}
+.setupBox{
+  width:min(560px,92vw);background:var(--panel);
+  border:1px solid var(--line);border-radius:20px;
+  padding:24px;text-align:center;box-shadow:0 20px 70px #0009;
+}
+.setupBox h1{margin:0 0 8px;font-size:36px}
+.setupBox p{margin:8px 0;color:var(--muted);line-height:1.35}
+.setupBtns{display:flex;gap:12px;justify-content:center;margin-top:18px}
+.setupBtns button{font-size:22px;min-width:92px;padding:16px 24px}
+
+#app{
+  width:100vw;height:var(--appH, 100dvh);
+  display:grid;grid-template-rows:var(--topH) var(--tableH) 1fr;
+  gap:var(--gap);padding:8px;overflow:hidden;
+}
+#topbar,#table{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:14px;overflow:hidden;
+}
+#topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 10px;gap:8px;
+}
+#status{
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  line-height:1.12;font-size:16px;font-weight:800;
+}
+#status small{
+  display:block;color:var(--muted);font-size:12px;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;
+}
+#actions{display:flex;gap:8px;flex-shrink:0;align-items:center}
+.scoreToggle{
+  display:flex;align-items:center;gap:6px;
+  color:var(--muted);font-size:12px;font-weight:800;
+  white-space:nowrap;
+}
+.scoreToggle input{
+  width:20px;height:20px;margin:0;accent-color:var(--accent);
+}
+
+#table{
+  display:grid;grid-template-columns:150px 1fr;gap:6px;padding:7px;
+}
+#table h2{margin:0 0 4px;font-size:15px}
+#tableInfo{font-size:12px;color:var(--muted);line-height:1.2}
+#tableCards{display:flex;gap:8px;align-items:center;min-width:0;overflow:hidden}
+.tableSlot{width:48px;height:68px;flex:0 0 auto}
+.tableSlot .card{font-size:26px}
+
+#boards{min-height:0;display:grid;gap:6px;overflow:hidden}
+#boards.p2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+#boards.p3{grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr}
+#boards.p4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+
+.player{
+  min-width:0;min-height:0;background:var(--panel);
+  border:1px solid var(--line);border-radius:14px;
+  padding:5px;display:grid;grid-template-rows:24px 1fr;
+  gap:4px;overflow:visible;
+}
+.player.active{outline:3px solid var(--accent);outline-offset:-3px}
+.phead{
+  display:flex;justify-content:space-between;align-items:center;
+  min-width:0;font-size:14px;font-weight:900;
+}
+.phead span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phead span:last-child{color:var(--muted);font-size:12px;white-space:nowrap}
+
+.boardArea{
+  min-width:0;min-height:0;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/*
+  UUSI PUHDAS KOHDISTUS:
+  frame6 on täsmälleen 6×6.
+  - reuna 0 ja 5 ovat nuolille
+  - kortit ovat soluissa 1..4 sekä riveillä että sarakkeissa
+  - mitään absolute-sijoittelua ei käytetä
+*/
+.frame6{
+  display:grid;
+  grid-template-columns:repeat(6,var(--cell));
+  grid-template-rows:repeat(6,var(--cell));
+  gap:2px;
+}
+#boards.p2 .frame6{
+  --cell:min(
+    calc((100vw - 44px) / 12),
+    calc((var(--appH, 100dvh) - var(--topH) - var(--tableH) - 52px) / 6)
+  );
+}
+#boards.p3 .frame6{
+  --cell:min(
+    calc((100vw - 58px) / 18),
+    calc((var(--appH, 100dvh) - var(--topH) - var(--tableH) - 52px) / 6)
+  );
+}
+#boards.p4 .frame6{
+  --cell:min(
+    calc((100vw - 50px) / 12),
+    calc((var(--appH, 100dvh) - var(--topH) - var(--tableH) - 72px) / 12)
+  );
+}
+.cell{
+  width:var(--cell);height:var(--cell);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.card{
+  width:100%;height:100%;border-radius:7px;
+  background:var(--card);color:#111827;
+  border:2px solid #d7c79c;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:900;font-size:calc(var(--cell) * .38);
+  user-select:none;
+}
+.card.back{
+  background:linear-gradient(135deg,var(--back1),var(--back2));
+  border-color:#64748b;color:transparent;
+}
+.card.back::after{
+  content:"";width:56%;height:56%;
+  border:2px solid #cbd5e1;border-radius:50%;opacity:.75;
+}
+.card.empty{
+  background:#0f172a66;border:2px dashed #94a3b8;color:#94a3b8;
+}
+.card.selectable{outline:3px solid var(--accent);outline-offset:-4px}
+.card.chosen{outline:3px solid var(--green);outline-offset:-4px}
+.card.cancel{opacity:.25;text-decoration:line-through}
+.arrow{
+  width:calc(var(--cell) * .72);height:calc(var(--cell) * .72);
+  max-width:38px;max-height:38px;min-width:24px;min-height:24px;
+  border-radius:999px;padding:0;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--green);color:#052e16;
+  border:2px solid #dcfce7;box-shadow:0 2px 8px #0008;
+  font-size:calc(var(--cell) * .38);
+}
+.arrow:active{transform:scale(.95)}
+
+/* Värisokeille sopiva, selkeä mutta hillitty numeroväritys.
+   Numero säilyy aina näkyvänä, joten väri ei ole ainoa tunniste. */
+.card.num1{background:#f6e8c3;border-color:#c9a85d}
+.card.num2{background:#c7eae5;border-color:#5aa6a0}
+.card.num3{background:#d8daeb;border-color:#8b8fc0}
+.card.num4{background:#fddbc7;border-color:#d58a63}
+.card.num5{background:#e0f3db;border-color:#7bb96f}
+.card.num6{background:#fee0ef;border-color:#cc79a7}
+.card.num7{background:#e6f5c9;border-color:#8da85b}
+.card.num8{background:#b3cde3;border-color:#4f83aa}
+.card.num9{background:#decbe4;border-color:#9b6aa8}
+.card.num10{background:#ffffcc;border-color:#c2b84d}
+
+.player.winner{outline:3px solid var(--accent);outline-offset:-3px}
+.player.notWinner{opacity:.38;filter:saturate(.45)}
+
+#msg{
+  position:fixed;left:50%;bottom:12px;transform:translateX(-50%);
+  z-index:40;display:none;background:#000c;color:white;
+  border:1px solid #ffffff33;border-radius:999px;
+  padding:8px 14px;font-weight:800;
+}
+#helpDialog{
+  position:fixed;inset:0;z-index:50;
+  display:none;align-items:center;justify-content:center;
+  background:#020617b8;padding:18px;
+}
+#helpDialog.open{display:flex}
+.helpBox{
+  width:min(620px,94vw);max-height:min(720px,90dvh);
+  overflow:auto;background:var(--panel);border:1px solid var(--line);
+  border-radius:16px;padding:18px;box-shadow:0 22px 70px #000b;
+}
+.helpHead{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;margin-bottom:10px;
+}
+.helpHead h2{margin:0;font-size:24px}
+.helpBox ol{margin:10px 0 0 22px;padding:0;color:var(--muted);line-height:1.38}
+.helpBox li{margin:8px 0}
+.helpBox strong{color:var(--text)}
+@media (orientation:portrait){
+  #boards.p3{grid-template-columns:1fr;grid-template-rows:1fr 1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="setup">
+  <div class="setupBox">
+    <h1>Slide</h1>
+    <p>Valitse pelaajamäärä. Jokaisella pelaajalla on aluksi 4×4 kortit kuvapuoli alaspäin.</p>
+    <p>Pöytäkortit paljastetaan automaattisesti, kun valintavuoro palaa kierroksen aloittajalle.</p>
+    <div class="setupBtns">
+      <button onclick="newGame(2)">2</button>
+      <button onclick="newGame(3)">3</button>
+      <button onclick="newGame(4)">4</button>
+    </div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="topbar">
+    <div id="status">Valitse pelaajamäärä<small>Kortit kohdistetaan 6×6-solukkoon: nuolikehä + 4×4-kortit.</small></div>
+    <div id="actions">
+      <label class="scoreToggle"><input id="showScoresToggle" type="checkbox"> Pisteet</label>
+      <button class="secondary" onclick="openHelp()">Ohjeet</button>
+      <button class="danger" onclick="resetGame()">Uusi</button>
+    </div>
+  </div>
+
+  <div id="table">
+    <div>
+      <h2>Pöytäkortit</h2>
+      <div id="tableInfo">Kortit paljastuvat automaattisesti, kun kaikki ovat valinneet.</div>
+    </div>
+    <div id="tableCards"></div>
+  </div>
+
+  <div id="boards"></div>
+</div>
+
+<div id="msg"></div>
+<div id="helpDialog" onclick="closeHelp(event)">
+  <div class="helpBox">
+    <div class="helpHead">
+      <h2>Peliohjeet</h2>
+      <button class="secondary" onclick="closeHelp()">Sulje</button>
+    </div>
+    <ol>
+      <li><strong>Valitse pelaajamäärä.</strong> Jokaisella pelaajalla on 4×4 piilokorttia.</li>
+      <li><strong>Valintavaiheessa</strong> jokainen pelaaja valitsee vuorollaan yhden oman piilokortin pöytään.</li>
+      <li><strong>Pöytäkortit paljastetaan</strong>, kun kaikki ovat valinneet yhden kortin.</li>
+      <li><strong>Vaihtovaiheessa</strong> pelaajat valitsevat pöytäkortin vuorollaan ja työntävät sen omaan ruudukkoon vihreästä nuolesta.</li>
+      <li><strong>Kierroksen aloittaja vaihtuu</strong> jokaisen kierroksen jälkeen.</li>
+      <li><strong>Pelin lopussa</strong> vierekkäiset samat numerot poistuvat pisteytyksestä. Pienin pistemäärä voittaa.</li>
+    </ol>
+  </div>
+</div>
+
+<script>
+const CARD_COUNTS = 10;
+const SAVE_KEY = 'slide-game-state-v1';
+let players = [];
+let playerCount = 0;
+let deck = [];
+let table = [];
+let phase = 'setup'; // setup, select, draft, gameover
+let round = 1;
+let firstPlayer = 0;
+let selectOffset = 0;
+let draftIndex = 0;
+let selectedTableIndex = null;
+let placedCards = 0;
+let showScoresDuringGame = false;
+
+const boardsEl = document.getElementById('boards');
+const tableEl = document.getElementById('tableCards');
+const statusEl = document.getElementById('status');
+const setupEl = document.getElementById('setup');
+const scoreToggleEl = document.getElementById('showScoresToggle');
+
+function shuffle(a){
+  for(let i=a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function makeDeck(){
+  const d=[];
+  for(let n=1;n<=10;n++) for(let i=0;i<CARD_COUNTS;i++) d.push(n);
+  return shuffle(d);
+}
+function msg(t){
+  const el=document.getElementById('msg');
+  el.textContent=t;
+  el.style.display='block';
+  clearTimeout(msg.timer);
+  msg.timer=setTimeout(()=>el.style.display='none',2100);
+}
+function saveGame(){
+  try{
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      players, playerCount, deck, table, phase, round, firstPlayer,
+      selectOffset, draftIndex, selectedTableIndex, placedCards,
+      showScoresDuringGame
+    }));
+  }catch(e){
+    msg('Pelin tallennus ei onnistunut.');
+  }
+}
+function restoreGame(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(!raw) return false;
+    const saved=JSON.parse(raw);
+    if(!saved || !Array.isArray(saved.players) || !saved.playerCount) return false;
+
+    players=saved.players;
+    playerCount=saved.playerCount;
+    deck=Array.isArray(saved.deck) ? saved.deck : [];
+    table=Array.isArray(saved.table) ? saved.table : [];
+    phase=saved.phase || 'select';
+    round=saved.round || 1;
+    firstPlayer=saved.firstPlayer || 0;
+    selectOffset=saved.selectOffset || 0;
+    draftIndex=saved.draftIndex || 0;
+    selectedTableIndex=saved.selectedTableIndex ?? null;
+    placedCards=saved.placedCards || 0;
+    showScoresDuringGame=!!saved.showScoresDuringGame;
+
+    setupEl.style.display=phase==='setup' ? 'flex' : 'none';
+    boardsEl.className=playerCount ? 'p'+playerCount : '';
+    scoreToggleEl.checked=showScoresDuringGame;
+    render();
+    return true;
+  }catch(e){
+    localStorage.removeItem(SAVE_KEY);
+    return false;
+  }
+}
+function resetGame(){
+  const hasActiveGame = players.length && phase !== 'setup';
+  if(hasActiveGame && !confirm('Aloitetaanko uusi peli? Nykyinen tallennettu tilanne poistuu.')) return;
+
+  localStorage.removeItem(SAVE_KEY);
+  players=[];
+  playerCount=0;
+  deck=[];
+  table=[];
+  phase='setup';
+  round=1;
+  firstPlayer=0;
+  selectOffset=0;
+  draftIndex=0;
+  selectedTableIndex=null;
+  placedCards=0;
+  setupEl.style.display='flex';
+  boardsEl.className='';
+  render();
+}
+function openHelp(){
+  document.getElementById('helpDialog').classList.add('open');
+}
+function closeHelp(event){
+  if(event && event.target.id !== 'helpDialog') return;
+  document.getElementById('helpDialog').classList.remove('open');
+}
+function currentDraftPlayer(){
+  return (firstPlayer + draftIndex) % playerCount;
+}
+function currentSelectingPlayer(){
+  return (firstPlayer + selectOffset) % playerCount;
+}
+
+function newGame(n){
+  playerCount=n;
+  deck=makeDeck();
+  players=[];
+  table=[];
+  phase='select';
+  round=1;
+  firstPlayer=0;
+  selectOffset=0;
+  draftIndex=0;
+  selectedTableIndex=null;
+  placedCards=0;
+
+  for(let p=0;p<n;p++){
+    const grid=[];
+    for(let i=0;i<16;i++){
+      grid.push({value:deck.pop(), revealed:false, empty:false});
+    }
+    players.push({name:'Pelaaja '+(p+1), grid, removedIndex:null});
+  }
+
+  setupEl.style.display='none';
+  boardsEl.className='p'+n;
+  saveGame();
+  render();
+}
+
+function setStatus(){
+  let main='', sub='';
+  if(phase==='select'){
+    const p=currentSelectingPlayer();
+    main=`Kierros ${round}/16: ${players[p].name} valitsee piilokortin`;
+    sub=`Kierroksen aloittaja on ${players[firstPlayer].name}. Kortit paljastuvat, kun vuoro palaa aloittajalle.`;
+  }else if(phase==='draft'){
+    const p=currentDraftPlayer();
+    main=`${players[p].name} valitsee pöytäkortin`;
+    sub=selectedTableIndex==null
+      ? 'Valitse yksi näkyvä pöytäkortti. Viimeinen jäljellä oleva valitaan automaattisesti.'
+      : 'Työnnä kortti vihreästä nuolesta rivin tai sarakkeen alusta/lopusta.';
+  }else if(phase==='gameover'){
+    main='Peli päättyi';
+    sub='Vierekkäiset samat numerot poistuvat pisteytyksestä.';
+  }else{
+    main='Valitse pelaajamäärä';
+    sub='';
+  }
+  statusEl.innerHTML = `${main}<small>${sub}</small>`;
+}
+
+function selectGridCard(pIdx, idx){
+  if(phase!=='select' || pIdx!==currentSelectingPlayer()) return;
+
+  const cell=players[pIdx].grid[idx];
+  if(!cell || cell.empty || cell.revealed){
+    msg('Valitse vain kuvapuoli alaspäin oleva kortti.');
+    return;
+  }
+
+  table.push({value:cell.value, from:pIdx, revealed:false});
+  players[pIdx].grid[idx] = {value:null, revealed:true, empty:true};
+  players[pIdx].removedIndex = idx;
+
+  selectOffset++;
+
+  if(selectOffset >= playerCount){
+    table.forEach(c=>c.revealed=true);
+    selectedTableIndex=null;
+    draftIndex=0;
+    phase='draft';
+  }
+
+  saveGame();
+  render();
+}
+
+function chooseTable(i){
+  if(phase!=='draft') return;
+  if(!table[i]) return;
+  selectedTableIndex = selectedTableIndex===i ? null : i;
+  saveGame();
+  render();
+}
+
+function autoSelectLastTableCard(){
+  if(phase === 'gameover') return;
+  if(phase !== 'draft') return;
+  if(selectedTableIndex != null) return;
+  if(table.length === 1){
+    selectedTableIndex = 0;
+  }
+}
+
+function removedPos(pIdx){
+  const idx=players[pIdx].removedIndex;
+  if(idx==null) return null;
+  return {idx, r:Math.floor(idx/4), c:idx%4};
+}
+
+function allBoardsFilled(){
+  return players.length > 0 && players.every(p => p.grid.every(cell => cell && !cell.empty));
+}
+
+/*
+  Nuolikehä:
+  4×4-kortit ovat loogisissa koordinaateissa r=0..3, c=0..3.
+  6×6-piirrossa kortti (r,c) menee soluun (r+1,c+1).
+
+  Nuoli vasemmalta:  (r,-1) -> 6×6-solu (r+1,0)
+  Nuoli oikealta:    (r, 4) -> 6×6-solu (r+1,5)
+  Nuoli ylhäältä:    (-1,c) -> 6×6-solu (0,c+1)
+  Nuoli alhaalta:    (4, c) -> 6×6-solu (5,c+1)
+
+  Esim. tyhjä 3,3 -> nuolet 3,-1 ja -1,3.
+*/
+function legalArrows(pIdx){
+  if(phase!=='draft' || pIdx!==currentDraftPlayer() || selectedTableIndex==null) return [];
+  const e=removedPos(pIdx);
+  if(!e) return [];
+
+  const arr=[];
+  if(e.c>0) arr.push({dir:'L', ar:e.r, ac:-1, label:'→'});
+  if(e.c<3) arr.push({dir:'R', ar:e.r, ac:4, label:'←'});
+  if(e.r>0) arr.push({dir:'T', ar:-1, ac:e.c, label:'↓'});
+  if(e.r<3) arr.push({dir:'B', ar:4, ac:e.c, label:'↑'});
+  return arr;
+}
+
+function slideIn(pIdx, dir){
+  if(phase!=='draft' || pIdx!==currentDraftPlayer() || selectedTableIndex==null) return;
+
+  const e=removedPos(pIdx);
+  if(!e) return;
+
+  if(!legalArrows(pIdx).some(a=>a.dir===dir)){
+    msg('Tähän suuntaan ei voi työntää tästä aukosta.');
+    return;
+  }
+
+  const picked=table[selectedTableIndex];
+  if(!picked) return;
+
+  const g=players[pIdx].grid;
+  const newCell={value:picked.value, revealed:true, empty:false};
+
+  // 1) Tee varsinainen liu'utus ensin.
+  if(dir==='L'){
+    for(let c=e.c;c>0;c--) g[e.r*4+c]=g[e.r*4+c-1];
+    g[e.r*4+0]=newCell;
+  }else if(dir==='R'){
+    for(let c=e.c;c<3;c++) g[e.r*4+c]=g[e.r*4+c+1];
+    g[e.r*4+3]=newCell;
+  }else if(dir==='T'){
+    for(let r=e.r;r>0;r--) g[r*4+e.c]=g[(r-1)*4+e.c];
+    g[0*4+e.c]=newCell;
+  }else if(dir==='B'){
+    for(let r=e.r;r<3;r++) g[r*4+e.c]=g[(r+1)*4+e.c];
+    g[3*4+e.c]=newCell;
+  }
+
+  // 2) Poista käytetty pöytäkortti ja merkitse pelaajan aukko täytetyksi.
+  table.splice(selectedTableIndex,1);
+  selectedTableIndex=null;
+  players[pIdx].removedIndex=null;
+  draftIndex++;
+  placedCards++;
+
+  // 3) Peli päättyy vasta, kun viimeinenkin kortti on sijoitettu.
+  // Tämä on varmin ehto: jokainen pelaaja sijoittaa 16 korttia.
+  const gameShouldEnd = placedCards >= playerCount * 16;
+
+  if(gameShouldEnd){
+    // Lopputila alkaa vasta onnistuneen liu'utuksen jälkeen.
+    table=[];
+    players.forEach(p=>p.removedIndex=null);
+    selectedTableIndex=null;
+    draftIndex=playerCount;
+    selectOffset=0;
+    phase='gameover';
+    saveGame();
+    render();
+    return;
+  }
+
+  // 4) Jos kierroksen kaikki pöytäkortit on sijoitettu, siirry seuraavaan kierrokseen.
+  if(draftIndex>=playerCount){
+    players.forEach(p=>p.removedIndex=null);
+    selectOffset=0;
+    firstPlayer=(firstPlayer+1)%playerCount;
+    round++;
+    draftIndex=0;
+    selectedTableIndex=null;
+    phase='select';
+  }
+
+  saveGame();
+  render();
+}
+
+function scorePlayer(p){
+  const removed=new Set();
+  for(let r=0;r<4;r++){
+    for(let c=0;c<4;c++){
+      const i=r*4+c;
+      const a=p.grid[i];
+      if(!a || a.empty) continue;
+      [[r+1,c],[r,c+1]].forEach(([rr,cc])=>{
+        if(rr<4 && cc<4){
+          const j=rr*4+cc;
+          const b=p.grid[j];
+          if(b && !b.empty && b.value===a.value){
+            removed.add(i);
+            removed.add(j);
+          }
+        }
+      });
+    }
+  }
+  let total=0,left=0;
+  p.grid.forEach((cell,i)=>{
+    if(cell && !cell.empty && !removed.has(i)){
+      total+=cell.value;
+      left++;
+    }
+  });
+  return {total,left,removed};
+}
+
+function compareResults(a,b){
+  // Palauttaa negatiivisen, jos a on parempi kuin b.
+  if(a.total !== b.total) return a.total - b.total;       // pienempi pistemäärä voittaa
+  if(a.count !== b.count) return a.count - b.count;       // vähemmän pistekortteja voittaa
+
+  // Jos korttimääräkin on sama, verrataan suurinta korttia, sitten toiseksi suurinta jne.
+  // Tässäkin pienempi kortti on parempi, koska pisteitä yritetään minimoida.
+  const n = Math.max(a.vals.length, b.vals.length);
+  for(let i=0;i<n;i++){
+    const av = a.vals[i] ?? -Infinity;
+    const bv = b.vals[i] ?? -Infinity;
+    if(av !== bv) return av - bv;
+  }
+  return 0;
+}
+
+function scoreSummary(p){
+  const s = scorePlayer(p);
+  const vals = [];
+
+  p.grid.forEach((cell,i)=>{
+    if(cell && !cell.empty && !s.removed.has(i)){
+      vals.push(cell.value);
+    }
+  });
+
+  // Tasapelin vertailu:
+  // pienempi suurin kortti voittaa, sitten toiseksi suurin jne.
+  vals.sort((a,b)=>b-a);
+
+  return {
+    total: s.total,
+    count: vals.length,
+    vals,
+    removed: s.removed
+  };
+}
+
+function winnerIndices(){
+  if(phase !== 'gameover') return new Set();
+
+  const results = players.map(p => scoreSummary(p));
+  let best = results[0];
+
+  for(let i=1;i<results.length;i++){
+    if(compareResults(results[i], best) < 0){
+      best = results[i];
+    }
+  }
+
+  const winners = new Set();
+  results.forEach((r,i)=>{
+    if(compareResults(r,best) === 0) winners.add(i);
+  });
+  return winners;
+}
+function makeCard(cell, pIdx, idx, scoreInfo){
+  const d=document.createElement('div');
+
+  if(cell.empty){
+    d.className='card empty';
+    d.textContent='';
+  }else{
+    d.className='card '+(cell.revealed ? ('num'+cell.value) : 'back');
+
+    if(phase==='select' && pIdx===currentSelectingPlayer() && !cell.revealed){
+      d.classList.add('selectable');
+    }
+    if(phase==='gameover' && scoreInfo.removed.has(idx)){
+      d.classList.add('cancel');
+    }
+
+    d.textContent=cell.revealed ? cell.value : '';
+  }
+
+  d.onclick=()=>selectGridCard(pIdx,idx);
+  return d;
+}
+
+function render(){
+  autoSelectLastTableCard();
+  setStatus();
+  const winners = winnerIndices();
+
+  tableEl.innerHTML='';
+  if(phase!=='gameover'){
+    for(let i=0;i<playerCount;i++){
+      const slot=document.createElement('div');
+      slot.className='tableSlot';
+
+      const t=table[i];
+      if(t){
+        const c=document.createElement('div');
+        c.className='card '+(t.revealed ? ('num'+t.value) : 'back')+(selectedTableIndex===i?' chosen':'');
+        c.textContent=t.revealed ? t.value : '';
+        c.onclick=()=>chooseTable(i);
+        slot.appendChild(c);
+      }
+
+      tableEl.appendChild(slot);
+    }
+  }
+
+  boardsEl.innerHTML='';
+  players.forEach((p,pIdx)=>{
+    const score=scorePlayer(p);
+
+    const panel=document.createElement('div');
+    panel.className='player';
+
+    if((phase==='select' && pIdx===currentSelectingPlayer()) || (phase==='draft' && pIdx===currentDraftPlayer())){
+      panel.classList.add('active');
+    }
+    if(winners.has(pIdx)){
+      panel.classList.add('winner','active');
+    }else if(phase==='gameover' && winners.size){
+      panel.classList.add('notWinner');
+    }
+
+    const head=document.createElement('div');
+    head.className='phead';
+    const scoreText = (phase==='gameover' || showScoresDuringGame) ? `${score.total} p` : 'piilossa';
+    head.innerHTML=`<span>${p.name}${pIdx===firstPlayer?' ★':''}</span><span>${scoreText}</span>`;
+    panel.appendChild(head);
+
+    const area=document.createElement('div');
+    area.className='boardArea';
+
+    const frame=document.createElement('div');
+    frame.className='frame6';
+
+    // Luodaan 36 solua ensin taulukkoon, jotta kohdistus on aina yksiselitteinen.
+    const cells=[];
+    for(let i=0;i<36;i++){
+      const cellDiv=document.createElement('div');
+      cellDiv.className='cell';
+      cells.push(cellDiv);
+      frame.appendChild(cellDiv);
+    }
+
+    // Kortit: 4×4 -> 6×6-solut (r+1,c+1).
+    for(let r=0;r<4;r++){
+      for(let c=0;c<4;c++){
+        const idx=r*4+c;
+        const fr=r+1;
+        const fc=c+1;
+        cells[fr*6+fc].appendChild(makeCard(p.grid[idx], pIdx, idx, score));
+      }
+    }
+
+    // Nuolet: loogiset nuolipaikat muunnetaan suoraan 6×6-soluihin.
+    legalArrows(pIdx).forEach(a=>{
+      const fr=a.ar+1;
+      const fc=a.ac+1;
+      const pos=fr*6+fc;
+      if(pos<0 || pos>=36) return;
+
+      const b=document.createElement('button');
+      b.className='arrow';
+      b.textContent=a.label;
+      b.onclick=()=>slideIn(pIdx,a.dir);
+      cells[pos].appendChild(b);
+    });
+
+    area.appendChild(frame);
+    panel.appendChild(area);
+    boardsEl.appendChild(panel);
+  });
+}
+
+function refreshViewportSize(){
+  const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  document.documentElement.style.setProperty('--appH', h + 'px');
+
+  // iPad/Safari voi palatessa antaa hetkeksi väärän viewportin.
+  // Tehdään toinen mittaus seuraavassa piirrossa.
+  requestAnimationFrame(()=>{
+    const h2 = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    document.documentElement.style.setProperty('--appH', h2 + 'px');
+    if(players.length) render();
+  });
+}
+
+window.addEventListener('resize', refreshViewportSize);
+window.addEventListener('orientationchange', refreshViewportSize);
+window.addEventListener('pageshow', refreshViewportSize);
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden) refreshViewportSize();
+});
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize', refreshViewportSize);
+}
+scoreToggleEl.addEventListener('change', ()=>{
+  showScoresDuringGame=scoreToggleEl.checked;
+  saveGame();
+  render();
+});
+restoreGame();
+refreshViewportSize();
+
+</script>
+</body>
+</html>
