@@ -204,6 +204,14 @@ button:disabled{
   font-size:calc(var(--cell) * .38);
   font-weight:900;line-height:1;text-align:center;
 }
+.arrowIcon{
+  display:block;
+  line-height:1;
+}
+.arrow.L .arrowIcon,
+.arrow.R .arrowIcon{
+  transform:translateY(-.08em);
+}
 .arrow:active{transform:scale(.95)}
 
 /* Värisokeille sopiva, selkeä mutta hillitty numeroväritys.
@@ -888,7 +896,7 @@ function render(){
 
     const head=document.createElement('div');
     head.className='phead';
-    const scoreText = (phase==='gameover' || showScoresDuringGame) ? `${score.total} p` : 'piilossa';
+    const scoreText = (phase==='gameover' || showScoresDuringGame) ? `${score.total} p` : '';
     head.innerHTML=`<span>${p.name}${pIdx===firstPlayer?' ★':''}</span><span>${scoreText}</span>`;
     panel.appendChild(head);
 
@@ -925,8 +933,8 @@ function render(){
       if(pos<0 || pos>=36) return;
 
       const b=document.createElement('button');
-      b.className='arrow';
-      b.textContent=a.label;
+      b.className='arrow '+a.dir;
+      b.innerHTML=`<span class="arrowIcon">${a.label}</span>`;
       b.onclick=()=>slideIn(pIdx,a.dir);
       cells[pos].appendChild(b);
     });
